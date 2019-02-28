@@ -18,12 +18,34 @@ horizontal_photos = []
 best = -1
 
 
+def delta_for_swap(sol, a, b):
+	if a > b:
+		a, b = b, a
+
+	previous = 0
+	next = 0
+
+	if a > 0:
+		previous += transition_score(sol[a - 1], sol[a])
+		next += transition_score(sol[a - 1], sol[b])
+	if a < len(sol) - 1:
+		previous += transition_score(sol[a], sol[a + 1])
+		next += transition_score(sol[b], sol[a + 1])
+	if b > 0:
+		previous += transition_score(sol[b - 1], sol[b])
+		next += transition_score(sol[b - 1], sol[a])
+	if b < len(sol) - 1:
+		previous += transition_score(sol[b], sol[b + 1])
+		next += transition_score(sol[a], sol[b + 1])
+	return next - previous
+
+
 class AnnealIt(simanneal.Annealer):
-	def __init__(self, id, state):
+	def __init__(self, id, state, score: int):
 		super().__init__(state)
 		self.copy_strategy = 'method'
-		self.steps = 100
-		self.current_obj = objective(state)
+		self.steps = 42  # TODO: asd
+		self.current_obj = score
 		self.id = str(id)
 
 		print(f"Thread {self.id}: Score for x0 = {self.current_obj}, annealing begins")
@@ -34,29 +56,9 @@ class AnnealIt(simanneal.Annealer):
 		while b == a:
 			b = random.randint(0, len(self.state) - 1)
 
-		if a > b:
-			a, b = b, a
+		delta = delta_for_swap(self.state, a, b)
 
-		previous = 0
-		next = 0
-
-		if a > 0:
-			previous += transition_score(self.state[a - 1], self.state[a])
-			next += transition_score(self.state[a - 1], self.state[b])
-		if a < len(self.state) - 1:
-			previous += transition_score(self.state[a], self.state[a + 1])
-			next += transition_score(self.state[b], self.state[a + 1])
-
-		if b > 0:
-			previous += transition_score(self.state[b - 1], self.state[b])
-			next += transition_score(self.state[b - 1], self.state[a])
-		if b < len(self.state) - 1:
-			previous += transition_score(self.state[b], self.state[b + 1])
-			next += transition_score(self.state[a], self.state[b + 1])
-
-		self.current_obj -= previous
-		self.current_obj += next
-
+		self.current_obj += delta
 		self.state[a], self.state[b] = self.state[b], self.state[a]
 
 	def energy(self):
@@ -92,10 +94,16 @@ def compute_it(id, output_file: str):
 			ih += 1
 			x0.append(slide)
 
-	annealer = AnnealIt(id, x0)
-	local_best, score = annealer.anneal()
-	score = -score
-	print(f"Thread {str(id)}: Annealed it! {score}")
+	score = objective(x0)
+	annealer = AnnealIt(id, x0, score)
+	auto_schedule = annealer.auto(minutes=0.2)
+	for i in range(1, 10):
+		score = local_search(x0, score)
+		annealer = AnnealIt(id, x0, score)
+		annealer.set_schedule(auto_schedule)
+		local_best, score = annealer.anneal()
+		score = -score
+		print(f"Thread {str(id)}: Annealed it! {score}")
 
 	if score > best:
 		lock.acquire()
@@ -166,10 +174,16 @@ class Slide:
 			return str(self.photo1.id)
 
 
-@dataclass
-class Slideshow:
-	slides: List[Slide]
-	obj: int
+def local_search(sol: List[Slide], current_obj: int) -> int:
+	prev_obj = current_obj
+	for i, slide in enumerate(sol[1:]):
+		delta = delta_for_swap(sol, i - 1, i)
+		if delta > 0:
+			current_obj += delta
+			sol[i - 1], sol[i] = sol[i], sol[i - 1]
+	print(f"Local search done: from {prev_obj} to {current_obj}")
+	return current_obj
+
 
 def write_output(output_file, slides: List[Slide]):
 	# noinspection PyListCreation
