@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+
 import argparse
 import multiprocessing
 import random
@@ -12,17 +14,23 @@ lock = Lock()
 photos = []
 vertical_photos = []
 horizontal_photos = []
+best = -1
 
 
-def compute_it(id):
+def compute_it(id, output_file: str):
 	# global vertical_photos
+	global best
 	v = vertical_photos.copy()
 	h = horizontal_photos.copy()
 	iv = 0
 	ih = 0
 
-	random.shuffle(v)
-	random.shuffle(h)
+	local_random = random.Random()
+	seeeeeeeeed = random.randint(0, sys.maxsize) + (id*100)**3
+	local_random.seed(seeeeeeeeed)
+	print(f"Thread {str(id)} has seed {str(seeeeeeeeed)}")
+	local_random.shuffle(v)
+	local_random.shuffle(h)
 
 	x0 = []
 
@@ -35,27 +43,33 @@ def compute_it(id):
 			x0.append(slide)
 		if ih < len(h):
 			slide = Slide(h[ih])
-			h += 1
+			ih += 1
 			x0.append(slide)
+
+	score = objective(x0)
+	print(f"Score for x0 = {score}")
+
+	local_best = x0
+	if score > best:
+		lock.acquire()
+		if score > best:
+			print(f"New best by {str(id)}: {str(score)}")
+			best = score
+			write_output(output_file, local_best)
+		lock.release()
 
 	# COMPUTE IT
 	# for x in sorted(listone, key=lambda el: el.cose, reverse=True)
-
-	lock.acquire()
-	print(f"{id} in da' lock: {global_variable_yeha}")
-	global_variable_yeha += 1
-	lock.release()
 
 
 def main(input_file: str, output_file: str):
 	file_lines = myio.read(input_file)
 
-
 	nlines = int(file_lines[0])
 
 	for i, line in enumerate(file_lines[1:]):
 		pieces = line.split(' ')
-		photo =Foto(i, pieces[0], pieces[1], set(pieces[2:]))
+		photo = Foto(i, pieces[0], pieces[1], set(pieces[2:]))
 		photos.append(photo)
 		if photo.is_vertical():
 			vertical_photos.append(photo)
@@ -64,14 +78,12 @@ def main(input_file: str, output_file: str):
 
 	workers = []
 	for i in range(0, multiprocessing.cpu_count()):
-		workers.append(Thread(target=compute_it, args=(str(i))))
+		workers.append(Thread(target=compute_it, args=(i, output_file)))
 		workers[-1].start()
 
 	for worker in workers:
 		# Workers of the world, unite!
 		worker.join()
-
-	write_output(output_file, photos)
 
 
 @dataclass
@@ -91,29 +103,44 @@ class Slide:
 		self.photo2 = second
 		if self.photo2 is None:
 			self.tags = self.photo1.tags
+			self.vertical = False
 		else:
+			if self.photo1.id > self.photo2.id:  # swap swap swap
+				self.photo1, self.photo2 = self.photo2, self.photo1
 			self.tags = self.photo1.tags & self.photo2.tags
+			self.vertical = True
 
-	# @property
-	# def tags(self):
+	def ids(self):
+		if self.vertical:
+			return f"{str(self.photo1.id)} {str(self.photo2.id)}"
+		else:
+			return str(self.photo1.id)
 
 
-def write_output(output_file, photos: List[Foto]):
+def write_output(output_file, slides: List[Slide]):
 	# noinspection PyListCreation
 	file_lines = []
-	# TODO: double photoz
-	file_lines.append(str(len(photos)))
-	for photo in photos:
-		file_lines.append(photo.id)
+	file_lines.append(str(len(slides)))
+	for slide in slides:
+		file_lines.append(slide.ids())
 	myio.write(output_file, file_lines)
 
 
 def transition_score(first: Slide, second: Slide):
-	n1 = first.tags.intersection(second.tags)
-	n2 = first.tags.difference(second.tags)
-	n3 = second.tags.difference(first.tags)
+	n1 = len(first.tags.intersection(second.tags))
+	n2 = len(first.tags.difference(second.tags))
+	n3 = len(second.tags.difference(first.tags))
 
 	return min(n1, n2, n3)
+
+
+def objective(sol: List[Slide]):
+	if len(sol) == 0:
+		return 0
+	score = 0
+	for i in range(0, len(sol) - 1):
+		score += transition_score(sol[i], sol[i+1])
+	return score
 
 
 if __name__ == "__main__":
