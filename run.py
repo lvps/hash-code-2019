@@ -43,23 +43,28 @@ def delta_for_swap(sol, a, b):
 class AnnealIt(simanneal.Annealer):
 	def __init__(self, id, state, score: int):
 		super().__init__(state)
+		self.id = str(id)
+		print(f"Thread {self.id} building the annealer")
 		self.copy_strategy = 'method'
 		self.steps = 42  # TODO: asd
+		self.step = 0
 		self.current_obj = score
-		self.id = str(id)
+		print(f"Thread {self.id} has da' annealer, start now!")
 
 		print(f"Thread {self.id}: Score for x0 = {self.current_obj}, annealing begins")
 
 	def move(self):
-		a = random.randint(0, len(self.state) - 1)
-		b = random.randint(0, len(self.state) - 1)
-		while b == a:
+		self.step += 1
+		for i in range(1, int((float(len(self.state))) * (1.0 - self.step/self.steps))):
+			a = random.randint(0, len(self.state) - 1)
 			b = random.randint(0, len(self.state) - 1)
+			while b == a:
+				b = random.randint(0, len(self.state) - 1)
 
-		delta = delta_for_swap(self.state, a, b)
+			delta = delta_for_swap(self.state, a, b)
 
-		self.current_obj += delta
-		self.state[a], self.state[b] = self.state[b], self.state[a]
+			self.current_obj += delta
+			self.state[a], self.state[b] = self.state[b], self.state[a]
 
 	def energy(self):
 		return -self.current_obj
@@ -103,14 +108,15 @@ def compute_it(id, output_file: str):
 	# annealer = AnnealIt(id, x0, score)
 	# auto_schedule = annealer.auto(minutes=0.2)
 	score = local_search(x0, score)
+	local_best = x0
 	for i in range(0, 3):
-		annealer = AnnealIt(id, x0, score)
+		annealer = AnnealIt(id, local_best, score)
 		# annealer.set_schedule(auto_schedule)
 		local_best, score = annealer.anneal()
 		score = -score
 		print(f"Thread {str(id)}: Annealed it! {score}")
 		prev_score = score
-		score = local_search(x0, score)
+		score = local_search(local_best, score)
 
 		if score > best:
 			lock.acquire()
