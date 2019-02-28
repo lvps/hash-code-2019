@@ -49,22 +49,20 @@ class AnnealIt(simanneal.Annealer):
 		self.steps = 42  # TODO: asd
 		self.step = 0
 		self.current_obj = score
-		print(f"Thread {self.id} has da' annealer, start now!")
-
-		print(f"Thread {self.id}: Score for x0 = {self.current_obj}, annealing begins")
+		print(f"Thread {self.id}: Score before annealing = {self.current_obj}, annealing begins")
 
 	def move(self):
 		self.step += 1
-		for i in range(1, int((float(len(self.state))) * (1.0 - self.step/self.steps))):
-			a = random.randint(0, len(self.state) - 1)
+		#for i in range(1, int((float(len(self.state))) * (1.0 - self.step/self.steps))):
+		a = random.randint(0, len(self.state) - 1)
+		b = random.randint(0, len(self.state) - 1)
+		while b == a:
 			b = random.randint(0, len(self.state) - 1)
-			while b == a:
-				b = random.randint(0, len(self.state) - 1)
 
-			delta = delta_for_swap(self.state, a, b)
+		delta = delta_for_swap(self.state, a, b)
 
-			self.current_obj += delta
-			self.state[a], self.state[b] = self.state[b], self.state[a]
+		self.current_obj += delta
+		self.state[a], self.state[b] = self.state[b], self.state[a]
 
 	def energy(self):
 		return -self.current_obj
@@ -125,6 +123,8 @@ def compute_it(id, output_file: str):
 				best = score
 				write_output(output_file, local_best)
 			lock.release()
+		else:
+			print(f"Thread {str(id)}: worse, {score} < {best}")
 
 		if prev_score == score:
 			print("Giving up")
