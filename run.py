@@ -21,6 +21,7 @@ best = -1
 class AnnealIt(simanneal.Annealer):
 	def __init__(self, state):
 		super().__init__(state)
+		self.copy_strategy = 'method'
 
 	def move(self):
 		a = random.randint(0, len(self.state) - 1)
@@ -94,16 +95,16 @@ def main(input_file: str, output_file: str):
 		else:
 			horizontal_photos.append(photo)
 
-	# workers = []
-	# for i in range(0, multiprocessing.cpu_count()):
-	# 	workers.append(Thread(target=compute_it, args=(i, output_file)))
-	# 	workers[-1].start()
-	#
-	# for worker in workers:
-	# 	# Workers of the world, unite!
-	# 	worker.join()
+	workers = []
+	for i in range(0, multiprocessing.cpu_count()):
+		workers.append(Thread(target=compute_it, args=(i, output_file)))
+		workers[-1].start()
 
-	compute_it(-1, output_file)
+	for worker in workers:
+		# Workers of the world, unite!
+		worker.join()
+
+	# compute_it(-1, output_file)
 
 
 @dataclass
@@ -160,6 +161,7 @@ def objective(sol: List[Slide]):
 	score = 0
 	for i in range(0, len(sol) - 1):
 		score += transition_score(sol[i], sol[i+1])
+	print(f"Nice score, dude: {str(score)}")
 	return score
 
 
