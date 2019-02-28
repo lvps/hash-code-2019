@@ -1,18 +1,42 @@
 #!/usr/bin/env python3
 import argparse
 import multiprocessing
+import random
 from dataclasses import dataclass
 from threading import Thread, Lock
-from typing import List
+from typing import List, Set, Optional
 
 import myio
 
 lock = Lock()
-global_variable_yeha = 10
+photos = []
+vertical_photos = []
+horizontal_photos = []
 
 
 def compute_it(id):
-	global global_variable_yeha
+	# global vertical_photos
+	v = vertical_photos.copy()
+	h = horizontal_photos.copy()
+	iv = 0
+	ih = 0
+
+	random.shuffle(v)
+	random.shuffle(h)
+
+	x0 = []
+
+	vmax = len(v) - (len(v) % 2)
+
+	while iv < vmax or ih < len(h):
+		if iv < vmax:
+			slide = Slide(v[iv], v[iv + 1])
+			iv += 2
+			x0.append(slide)
+		if ih < len(h):
+			slide = Slide(h[ih])
+			h += 1
+			x0.append(slide)
 
 	# COMPUTE IT
 	# for x in sorted(listone, key=lambda el: el.cose, reverse=True)
@@ -26,12 +50,17 @@ def compute_it(id):
 def main(input_file: str, output_file: str):
 	file_lines = myio.read(input_file)
 
-	photos = []
+
 	nlines = int(file_lines[0])
 
 	for i, line in enumerate(file_lines[1:]):
 		pieces = line.split(' ')
-		photos.append(Foto(i, pieces[0], pieces[1], set(pieces[2:])))
+		photo =Foto(i, pieces[0], pieces[1], set(pieces[2:]))
+		photos.append(photo)
+		if photo.is_vertical():
+			vertical_photos.append(photo)
+		else:
+			horizontal_photos.append(photo)
 
 	workers = []
 	for i in range(0, multiprocessing.cpu_count()):
@@ -50,7 +79,23 @@ class Foto:
 	id: int
 	orientation: str
 	n_tags: int
-	tags: set[str]
+	tags: Set[str]
+
+	def is_vertical(self):
+		return self.orientation == 'V'
+
+
+class Slide:
+	def __init__(self, first: Foto, second: Optional[Foto]=None):
+		self.photo1 = first
+		self.photo2 = second
+		if self.photo2 is None:
+			self.tags = self.photo1.tags
+		else:
+			self.tags = self.photo1.tags & self.photo2.tags
+
+	# @property
+	# def tags(self):
 
 
 def write_output(output_file, photos: List[Foto]):
@@ -63,7 +108,7 @@ def write_output(output_file, photos: List[Foto]):
 	myio.write(output_file, file_lines)
 
 
-def transition_score(first: Foto, second: Foto):
+def transition_score(first: Slide, second: Slide):
 	n1 = first.tags.intersection(second.tags)
 	n2 = first.tags.difference(second.tags)
 	n3 = second.tags.difference(first.tags)
