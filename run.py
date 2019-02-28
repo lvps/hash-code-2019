@@ -102,21 +102,26 @@ def compute_it(id, output_file: str):
 	print(f"Thread {str(id)}: score for x0 ready")
 	# annealer = AnnealIt(id, x0, score)
 	# auto_schedule = annealer.auto(minutes=0.2)
-	for i in range(0, 10):
-		score = local_search(x0, score)
+	score = local_search(x0, score)
+	for i in range(0, 3):
 		annealer = AnnealIt(id, x0, score)
 		# annealer.set_schedule(auto_schedule)
 		local_best, score = annealer.anneal()
 		score = -score
 		print(f"Thread {str(id)}: Annealed it! {score}")
+		prev_score = score
+		score = local_search(x0, score)
+		if prev_score == score:
+			print("Giving up")
+			break
 
-	if score > best:
-		lock.acquire()
 		if score > best:
-			print(f"New best by {str(id)}: {str(score)}")
-			best = score
-			write_output(output_file, local_best)
-		lock.release()
+			lock.acquire()
+			if score > best:
+				print(f"New best by {str(id)}: {str(score)}")
+				best = score
+				write_output(output_file, local_best)
+			lock.release()
 
 	# COMPUTE IT
 	# for x in sorted(listone, key=lambda el: el.cose, reverse=True)
