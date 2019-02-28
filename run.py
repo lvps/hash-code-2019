@@ -22,6 +22,7 @@ class AnnealIt(simanneal.Annealer):
 	def __init__(self, state):
 		super().__init__(state)
 		self.copy_strategy = 'method'
+		self.steps = 100
 
 	def move(self):
 		a = random.randint(0, len(self.state) - 1)
@@ -161,7 +162,7 @@ def objective(sol: List[Slide]):
 	score = 0
 	for i in range(0, len(sol) - 1):
 		score += transition_score(sol[i], sol[i+1])
-	print(f"Nice score, dude: {str(score)}")
+	#print(f"Nice score, dude: {str(score)}")
 	return score
 
 
