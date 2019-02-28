@@ -111,9 +111,6 @@ def compute_it(id, output_file: str):
 		print(f"Thread {str(id)}: Annealed it! {score}")
 		prev_score = score
 		score = local_search(x0, score)
-		if prev_score == score:
-			print("Giving up")
-			break
 
 		if score > best:
 			lock.acquire()
@@ -122,6 +119,10 @@ def compute_it(id, output_file: str):
 				best = score
 				write_output(output_file, local_best)
 			lock.release()
+
+		if prev_score == score:
+			print("Giving up")
+			break
 
 	# COMPUTE IT
 	# for x in sorted(listone, key=lambda el: el.cose, reverse=True)
