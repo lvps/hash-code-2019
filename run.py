@@ -19,18 +19,48 @@ best = -1
 
 
 class AnnealIt(simanneal.Annealer):
-	def __init__(self, state):
+	def __init__(self, id, state):
 		super().__init__(state)
 		self.copy_strategy = 'method'
 		self.steps = 100
+		self.current_obj = objective(state)
+		self.id = str(id)
+
+		print(f"Thread {self.id}: Score for x0 = {self.current_obj}, annealing begins")
 
 	def move(self):
 		a = random.randint(0, len(self.state) - 1)
 		b = random.randint(0, len(self.state) - 1)
+		while b == a:
+			b = random.randint(0, len(self.state) - 1)
+
+		if a > b:
+			a, b = b, a
+
+		previous = 0
+		next = 0
+
+		if a > 0:
+			previous += transition_score(self.state[a - 1], self.state[a])
+			next += transition_score(self.state[a - 1], self.state[b])
+		if a < len(self.state) - 1:
+			previous += transition_score(self.state[a], self.state[a + 1])
+			next += transition_score(self.state[b], self.state[a + 1])
+
+		if b > 0:
+			previous += transition_score(self.state[b - 1], self.state[b])
+			next += transition_score(self.state[b - 1], self.state[a])
+		if b < len(self.state) - 1:
+			previous += transition_score(self.state[b], self.state[b + 1])
+			next += transition_score(self.state[a], self.state[b + 1])
+
+		self.current_obj -= previous
+		self.current_obj += next
+
 		self.state[a], self.state[b] = self.state[b], self.state[a]
 
 	def energy(self):
-		return -objective(self.state)
+		return -self.current_obj
 
 
 def compute_it(id, output_file: str):
@@ -62,10 +92,7 @@ def compute_it(id, output_file: str):
 			ih += 1
 			x0.append(slide)
 
-	score = objective(x0)
-	print(f"Thread {str(id)}: Score for x0 = {score}")
-
-	annealer = AnnealIt(x0)
+	annealer = AnnealIt(id, x0)
 	local_best, score = annealer.anneal()
 	score = -score
 	print(f"Thread {str(id)}: Annealed it! {score}")
@@ -138,6 +165,11 @@ class Slide:
 		else:
 			return str(self.photo1.id)
 
+
+@dataclass
+class Slideshow:
+	slides: List[Slide]
+	obj: int
 
 def write_output(output_file, slides: List[Slide]):
 	# noinspection PyListCreation
