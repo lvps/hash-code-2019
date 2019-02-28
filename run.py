@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import multiprocessing
+from dataclasses import dataclass
 from threading import Thread, Lock
-import simanneal
+from typing import List
 
 import myio
 
@@ -23,7 +24,14 @@ def compute_it(id):
 
 
 def main(input_file: str, output_file: str):
-	lines = myio.read(input_file)
+	file_lines = myio.read(input_file)
+
+	photos = []
+	nlines = int(file_lines[0])
+
+	for i, line in enumerate(file_lines[1:]):
+		pieces = line.split(' ')
+		photos.append(Foto(i, pieces[0], pieces[1], set(pieces[2:])))
 
 	workers = []
 	for i in range(0, multiprocessing.cpu_count()):
@@ -34,7 +42,33 @@ def main(input_file: str, output_file: str):
 		# Workers of the world, unite!
 		worker.join()
 
-	myio.write(output_file, lines)
+	write_output(output_file, photos)
+
+
+@dataclass
+class Foto:
+	id: int
+	orientation: str
+	n_tags: int
+	tags: set[str]
+
+
+def write_output(output_file, photos: List[Foto]):
+	# noinspection PyListCreation
+	file_lines = []
+	# TODO: double photoz
+	file_lines.append(str(len(photos)))
+	for photo in photos:
+		file_lines.append(photo.id)
+	myio.write(output_file, file_lines)
+
+
+def transition_score(first: Foto, second: Foto):
+	n1 = first.tags.intersection(second.tags)
+	n2 = first.tags.difference(second.tags)
+	n3 = second.tags.difference(first.tags)
+
+	return min(n1, n2, n3)
 
 
 if __name__ == "__main__":
