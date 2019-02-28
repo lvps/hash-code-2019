@@ -7,6 +7,7 @@ import random
 from dataclasses import dataclass
 from threading import Thread, Lock
 from typing import List, Set, Optional
+import simanneal
 
 import myio
 
@@ -15,6 +16,19 @@ photos = []
 vertical_photos = []
 horizontal_photos = []
 best = -1
+
+
+class AnnealIt(simanneal.Annealer):
+	def __init__(self, state):
+		super().__init__(state)
+
+	def move(self):
+		a = random.randint(0, len(self.state) - 1)
+		b = random.randint(0, len(self.state) - 1)
+		self.state[a], self.state[b] = self.state[b], self.state[a]
+
+	def energy(self):
+		return -objective(self.state)
 
 
 def compute_it(id, output_file: str):
@@ -47,9 +61,13 @@ def compute_it(id, output_file: str):
 			x0.append(slide)
 
 	score = objective(x0)
-	print(f"Score for x0 = {score}")
+	print(f"Thread {str(id)}: Score for x0 = {score}")
 
-	local_best = x0
+	annealer = AnnealIt(x0)
+	local_best, score = annealer.anneal()
+	score = -score
+	print(f"Thread {str(id)}: Annealed it! {score}")
+
 	if score > best:
 		lock.acquire()
 		if score > best:
@@ -76,14 +94,16 @@ def main(input_file: str, output_file: str):
 		else:
 			horizontal_photos.append(photo)
 
-	workers = []
-	for i in range(0, multiprocessing.cpu_count()):
-		workers.append(Thread(target=compute_it, args=(i, output_file)))
-		workers[-1].start()
+	# workers = []
+	# for i in range(0, multiprocessing.cpu_count()):
+	# 	workers.append(Thread(target=compute_it, args=(i, output_file)))
+	# 	workers[-1].start()
+	#
+	# for worker in workers:
+	# 	# Workers of the world, unite!
+	# 	worker.join()
 
-	for worker in workers:
-		# Workers of the world, unite!
-		worker.join()
+	compute_it(-1, output_file)
 
 
 @dataclass
@@ -107,7 +127,7 @@ class Slide:
 		else:
 			if self.photo1.id > self.photo2.id:  # swap swap swap
 				self.photo1, self.photo2 = self.photo2, self.photo1
-			self.tags = self.photo1.tags & self.photo2.tags
+			self.tags = self.photo1.tags.union(self.photo2.tags)
 			self.vertical = True
 
 	def ids(self):
