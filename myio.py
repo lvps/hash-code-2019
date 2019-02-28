@@ -5,20 +5,18 @@ def do_the_computation(lines):
 	return lines
 
 
-def main():
+def read(filename):
 	lines = []
-
-	with open('input.txt') as f:
+	with open(filename) as f:
 		for line in f:
 			line = line.strip()
+			if len(line) <= 0:
+				continue
 			lines.append(line)
+	return lines
 
-	lines = do_the_computation(lines)
 
-	with open('output.txt', 'w') as f:
+def write(filename: str, lines):
+	with open(filename, 'w') as f:
 		for line in lines:
 			f.write(f"{line}\n")
-
-
-if __name__ == "__main__":
-	main()
