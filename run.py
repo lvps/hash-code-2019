@@ -95,12 +95,12 @@ def compute_it(id, output_file: str):
 			x0.append(slide)
 
 	score = objective(x0)
-	annealer = AnnealIt(id, x0, score)
-	auto_schedule = annealer.auto(minutes=0.2)
-	for i in range(1, 10):
+	# annealer = AnnealIt(id, x0, score)
+	# auto_schedule = annealer.auto(minutes=0.2)
+	for i in range(0, 10):
 		score = local_search(x0, score)
 		annealer = AnnealIt(id, x0, score)
-		annealer.set_schedule(auto_schedule)
+		# annealer.set_schedule(auto_schedule)
 		local_best, score = annealer.anneal()
 		score = -score
 		print(f"Thread {str(id)}: Annealed it! {score}")
@@ -176,11 +176,13 @@ class Slide:
 
 def local_search(sol: List[Slide], current_obj: int) -> int:
 	prev_obj = current_obj
-	for i, slide in enumerate(sol[1:]):
-		delta = delta_for_swap(sol, i - 1, i)
-		if delta > 0:
-			current_obj += delta
-			sol[i - 1], sol[i] = sol[i], sol[i - 1]
+	tot = len(sol)
+	for i in range(1, tot):
+		for j in range(0, i):
+			delta = delta_for_swap(sol, j, i)
+			if delta > 0:
+				current_obj += delta
+				sol[i - 1], sol[i] = sol[i], sol[i - 1]
 	print(f"Local search done: from {prev_obj} to {current_obj}")
 	return current_obj
 
