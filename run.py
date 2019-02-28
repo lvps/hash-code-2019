@@ -2,6 +2,7 @@
 import argparse
 import multiprocessing
 from threading import Thread, Lock
+import simanneal
 
 import myio
 
