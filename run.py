@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import multiprocessing
-import random
-import time
 from threading import Thread, Lock
 
 import myio
@@ -12,8 +10,10 @@ global_variable_yeha = 10
 
 
 def compute_it(id):
-	# COMPUTE IT
 	global global_variable_yeha
+
+	# COMPUTE IT
+	# for x in sorted(listone, key=lambda el: el.cose, reverse=True)
 
 	lock.acquire()
 	print(f"{id} in da' lock: {global_variable_yeha}")
