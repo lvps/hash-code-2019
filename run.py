@@ -122,7 +122,10 @@ def compute_it(id, output_file: str):
 				print(f"New best by {str(id)}: {str(score)}")
 				best = score
 				write_output(output_file, local_best)
-			lock.release()
+				lock.release()
+			else:
+				lock.release()
+				print(f"Thread {str(id)}: worse, {score} < {best}")
 		else:
 			print(f"Thread {str(id)}: worse, {score} < {best}")
 
